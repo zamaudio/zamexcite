@@ -89,7 +89,7 @@ lv2:port [
 	lv2:index 7;
 	lv2:symbol "ratio";
 	lv2:name "Ratio (dB)";
-	lv2:minimum 1.0 ;
+	lv2:minimum 2.0 ;
 	lv2:maximum 20.0 ;
 	lv2:default 6.0 ;
 	ue:unit ue:db;

@@ -260,15 +260,15 @@ run(LV2_Handle instance, uint32_t n_samples)
 		zamexcite->delaychanged = delaysamples;
 	}
 
-	float Q = 0.5;
-	float w0 = 2.0 * M_PI * *(zamexcite->hpfreq) / zamexcite->srate;
-	float alpha = sin(w0)/(2.0*Q); 
-	float b0 =  (1.0 + cos(w0))/2.0;
-	float b1 = -(1.0 + cos(w0));
-	float b2 =  (1.0 + cos(w0))/2.0;
-	float a0 =   1.0 + alpha;
-	float a1 =  -2.0 * cos(w0);
-	float a2 =   1.0 - alpha;
+	double Q = 0.707;
+	double w0 = 2.0 * M_PI * *(zamexcite->hpfreq) / zamexcite->srate;
+	double alpha = sin(w0)/(2.0*Q); 
+	double b0 =  (1.0 + cos(w0))/2.0;
+	double b1 = -(1.0 + cos(w0));
+	double b2 =  (1.0 + cos(w0))/2.0;
+	double a0 =   1.0 + alpha;
+	double a1 =  -2.0 * cos(w0);
+	double a2 =   1.0 - alpha;
 
 	float Lgain = 1.f;
 	float Rgain = 1.f;
@@ -373,9 +373,11 @@ run(LV2_Handle instance, uint32_t n_samples)
 		sanitize_denormal(tmpl);
 		sanitize_denormal(tmpr);
 
-		output_l[i] = tmpl + (input_l[i] * drygain) * togglelisten;
-		output_r[i] = tmpr + (input_r[i] * drygain) * togglelisten;
-    		
+		output_l[i] = tmpl + (input_l[i] * drygain) * togglelisten
+				- (1.f - togglelisten) * tmpinl;
+		output_r[i] = tmpr + (input_r[i] * drygain) * togglelisten
+				- (1.f - togglelisten) * tmpinr;
+
 		//post
 		zamexcite->oldL_yl = Lyl;
 		zamexcite->oldR_yl = Ryl;
@@ -386,16 +388,19 @@ run(LV2_Handle instance, uint32_t n_samples)
 		zamexcite->xfl_1 = tmpinl;
 
 		zamexcite->yfl_2 = zamexcite->yfl_1;
-		zamexcite->yfl_2 = tmpinl;
+		zamexcite->yfl_1 = intl;
 
 		zamexcite->xfr_2 = zamexcite->xfr_1;
 		zamexcite->xfr_1 = tmpinr;
 
 		zamexcite->yfr_2 = zamexcite->yfr_1;
-		zamexcite->yfr_2 = tmpinr;
+		zamexcite->yfr_1 = intr;
 
 		zamexcite->delaybuf_l[0] = input_l[i];
 		zamexcite->delaybuf_r[0] = input_r[i];
+
+		sanitize_denormal(zamexcite->delaybuf_l[0]);
+		sanitize_denormal(zamexcite->delaybuf_r[0]);
 
 		for (int k = 0; k < delaysamples-1; ++k) {
 			zamexcite->delaybuf_l[k+1] = zamexcite->delaybuf_l[k];
