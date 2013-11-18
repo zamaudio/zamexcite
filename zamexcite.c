@@ -26,7 +26,7 @@
 #define STEREOLINK_UNCOUPLED 0
 #define STEREOLINK_AVERAGE 1
 #define STEREOLINK_MAX 2
-#define MAXDELAYSAMPLES 38400 /* 1/5 of a second at 192k */
+#define MAXDELAYSAMPLES 3840 /* 1/50 of a second at 192k */
 
 #define min(x,y) (x < y) ? x : y
 
@@ -52,7 +52,7 @@ typedef enum {
 	ZAMEXCITE_HPFREQ = 14,
 	ZAMEXCITE_DRYGAIN = 15,
 
-	ZAMEXCITE_LISTEN = 16
+//	ZAMEXCITE_LISTEN = 16
 } PortIndex;
 
 
@@ -77,7 +77,7 @@ typedef struct {
 	float* gainr_r;
 
 	float* stereolink;
-	float* listen;
+//	float* listen;
 
 	float srate;
 	float oldL_yl;
@@ -122,7 +122,7 @@ instantiate(const LV2_Descriptor* descriptor,
 		zamexcite->delaybuf_r[i] = 0.f;
 	}
 	zamexcite->delaychanged = 0;
-	zamexcite->delaysamples = 1;
+	zamexcite->delaysamples = 0;
 
 	return (LV2_Handle)zamexcite;
 }
@@ -183,9 +183,9 @@ connect_port(LV2_Handle instance,
 	case ZAMEXCITE_DRYGAIN:
 		zamexcite->drygain = (float*)data;
 	break;
-	case ZAMEXCITE_LISTEN:
-		zamexcite->listen = (float*)data;
-	break;
+//	case ZAMEXCITE_LISTEN:
+//		zamexcite->listen = (float*)data;
+//	break;
 	}
 }
 
@@ -219,6 +219,13 @@ to_dB(float g) {
 static void
 activate(LV2_Handle instance)
 {
+	ZamEXCITE* zamexcite = (ZamEXCITE*)instance;
+	zamexcite->delaysamples = min(MAXDELAYSAMPLES, (int) (*(zamexcite->finedelay) * zamexcite->srate / 1000000));
+
+	for (int i = 0; i < zamexcite->delaysamples; ++i) {
+		zamexcite->delaybuf_l[i] = 0.f;
+		zamexcite->delaybuf_r[i] = 0.f;
+	}
 }
 
 static void
@@ -249,7 +256,7 @@ run(LV2_Handle instance, uint32_t n_samples)
 	float drygain = from_dB(*(zamexcite->drygain));
 	int delaysamples = min(MAXDELAYSAMPLES, (int) (*(zamexcite->finedelay) * zamexcite->srate / 1000000));
 	
-	float togglelisten = (*(zamexcite->listen) > 0.1) ? 0.f : 1.f;
+	//float togglelisten = (*(zamexcite->listen) > 0.1) ? 0.f : 1.f;
 
 	zamexcite->delaysamples = delaysamples;
 	if (zamexcite->delaychanged != delaysamples) {	
@@ -277,11 +284,11 @@ run(LV2_Handle instance, uint32_t n_samples)
 	float Lxl, Lyl, Ly1;
 	float Rxl, Ryl, Ry1;
  
-	float tmpl, tmpr, intl, intr;
+	float tmpl, tmpr, intl, intr, tmpinl, tmpinr;
 
 	for (uint32_t i = 0; i < n_samples; ++i) {
-		float tmpinl=zamexcite->delaybuf_l[delaysamples-1];
-		float tmpinr=zamexcite->delaybuf_r[delaysamples-1];
+		tmpinl=zamexcite->delaybuf_l[delaysamples-1];
+		tmpinr=zamexcite->delaybuf_r[delaysamples-1];
 
 		sanitize_denormal(tmpinl);
 		sanitize_denormal(tmpinr);
@@ -373,10 +380,13 @@ run(LV2_Handle instance, uint32_t n_samples)
 		sanitize_denormal(tmpl);
 		sanitize_denormal(tmpr);
 
-		output_l[i] = tmpl + (input_l[i] * drygain) * togglelisten
-				- (1.f - togglelisten) * tmpinl;
-		output_r[i] = tmpr + (input_r[i] * drygain) * togglelisten
-				- (1.f - togglelisten) * tmpinr;
+		sanitize_denormal(drygain);
+		
+		float outl = tmpl + (input_l[i] * drygain);
+		float outr = tmpr + (input_r[i] * drygain);
+		
+		output_l[i] = fabs(outl) > 1.f ? 1.f : outl;
+		output_r[i] = fabs(outr) > 1.f ? 1.f : outr;
 
 		//post
 		zamexcite->oldL_yl = Lyl;
@@ -402,7 +412,9 @@ run(LV2_Handle instance, uint32_t n_samples)
 		sanitize_denormal(zamexcite->delaybuf_l[0]);
 		sanitize_denormal(zamexcite->delaybuf_r[0]);
 
-		for (int k = 0; k < delaysamples-1; ++k) {
+		for (int k = 0; k < delaysamples; ++k) {
+			sanitize_denormal(zamexcite->delaybuf_l[k]);
+			sanitize_denormal(zamexcite->delaybuf_r[k]);
 			zamexcite->delaybuf_l[k+1] = zamexcite->delaybuf_l[k];
 			zamexcite->delaybuf_r[k+1] = zamexcite->delaybuf_r[k];
 		}
