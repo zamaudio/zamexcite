@@ -1,4 +1,4 @@
-/* zamexcite.c  ZamCompX2 stereo compressor
+/* zamexcite.c  ZamExcite stereo vocal exciter 
  * Copyright (C) 2013  Damien Zammit
  *
  * This program is free software; you can redistribute it and/or
@@ -52,7 +52,7 @@ typedef enum {
 	ZAMEXCITE_HPFREQ = 14,
 	ZAMEXCITE_DRYGAIN = 15,
 
-//	ZAMEXCITE_LISTEN = 16
+	ZAMEXCITE_LISTEN = 16
 } PortIndex;
 
 
@@ -77,7 +77,7 @@ typedef struct {
 	float* gainr_r;
 
 	float* stereolink;
-//	float* listen;
+	float* listen;
 
 	float srate;
 	float oldL_yl;
@@ -85,18 +85,15 @@ typedef struct {
 	float oldL_y1;
 	float oldR_y1;
 
-	float xfl_1;
-	float xfl_2;
-	float yfr_1;
-	float yfr_2;
-	float xfr_1;
-	float xfr_2;
-	float yfl_1;
-	float yfl_2;
+	float fRec0l[3];
+	float fRec1l[3];
+	float fRec0r[3];
+	float fRec1r[3];
 
 	float delaybuf_l[MAXDELAYSAMPLES];
 	float delaybuf_r[MAXDELAYSAMPLES];
 	
+	int delaypos;
 	int delaychanged;
 	int delaysamples;
 
@@ -114,9 +111,10 @@ instantiate(const LV2_Descriptor* descriptor,
 	zamexcite->oldL_yl=zamexcite->oldL_y1=0.f;
 	zamexcite->oldR_yl=zamexcite->oldR_y1=0.f;
 
- 	zamexcite->xfl_2 = zamexcite->xfl_1 = 0.f;
- 	zamexcite->yfl_2 = zamexcite->yfl_1 = 0.f;
-	 
+ 	zamexcite->fRec0l[0] = zamexcite->fRec0l[1] = zamexcite->fRec0l[2] = 0.f;
+ 	zamexcite->fRec1l[0] = zamexcite->fRec1l[1] = zamexcite->fRec1l[2] = 0.f;
+ 	zamexcite->fRec0r[0] = zamexcite->fRec0r[1] = zamexcite->fRec0r[2] = 0.f;
+ 	zamexcite->fRec1r[0] = zamexcite->fRec1r[1] = zamexcite->fRec1r[2] = 0.f;
 	for (int i = 0; i < MAXDELAYSAMPLES; ++i) {
 		zamexcite->delaybuf_l[i] = 0.f;
 		zamexcite->delaybuf_r[i] = 0.f;
@@ -183,9 +181,9 @@ connect_port(LV2_Handle instance,
 	case ZAMEXCITE_DRYGAIN:
 		zamexcite->drygain = (float*)data;
 	break;
-//	case ZAMEXCITE_LISTEN:
-//		zamexcite->listen = (float*)data;
-//	break;
+	case ZAMEXCITE_LISTEN:
+		zamexcite->listen = (float*)data;
+	break;
 	}
 }
 
@@ -219,13 +217,6 @@ to_dB(float g) {
 static void
 activate(LV2_Handle instance)
 {
-	ZamEXCITE* zamexcite = (ZamEXCITE*)instance;
-	zamexcite->delaysamples = min(MAXDELAYSAMPLES, (int) (*(zamexcite->finedelay) * zamexcite->srate / 1000000));
-
-	for (int i = 0; i < zamexcite->delaysamples; ++i) {
-		zamexcite->delaybuf_l[i] = 0.f;
-		zamexcite->delaybuf_r[i] = 0.f;
-	}
 }
 
 static void
@@ -256,26 +247,27 @@ run(LV2_Handle instance, uint32_t n_samples)
 	float drygain = from_dB(*(zamexcite->drygain));
 	int delaysamples = min(MAXDELAYSAMPLES, (int) (*(zamexcite->finedelay) * zamexcite->srate / 1000000));
 	
-	//float togglelisten = (*(zamexcite->listen) > 0.1) ? 0.f : 1.f;
+	float togglelisten = (*(zamexcite->listen) > 0.1) ? 0.f : 1.f;
 
 	zamexcite->delaysamples = delaysamples;
-	if (zamexcite->delaychanged != delaysamples) {	
+	/*if (zamexcite->delaychanged != delaysamples) {	
 		for (int i = 0; i < delaysamples; ++i) {
 			zamexcite->delaybuf_l[i] = 0.f;
 			zamexcite->delaybuf_r[i] = 0.f;
 		}
 		zamexcite->delaychanged = delaysamples;
 	}
-
-	double Q = 0.707;
-	double w0 = 2.0 * M_PI * *(zamexcite->hpfreq) / zamexcite->srate;
-	double alpha = sin(w0)/(2.0*Q); 
-	double b0 =  (1.0 + cos(w0))/2.0;
-	double b1 = -(1.0 + cos(w0));
-	double b2 =  (1.0 + cos(w0))/2.0;
-	double a0 =   1.0 + alpha;
-	double a1 =  -2.0 * cos(w0);
-	double a2 =   1.0 - alpha;
+*/
+	double fConst0 = 3.141592653589793 / zamexcite->srate;
+	double  fSlow0 = tan((fConst0 * *(zamexcite->hpfreq)));
+	double  fSlow1 = (1.0 / pow(fSlow0,2));
+	double  fSlow2 = (2 * (1 - fSlow1));
+	double  fSlow3 = (1.0 / fSlow0);
+	double  fSlow4 = (1 + ((fSlow3 - 0.7653668647301795) / fSlow0));
+	double  fSlow5 = (1.0 / (1 + ((0.7653668647301795 + fSlow3) / fSlow0)));
+	double  fSlow6 = (1 + ((fSlow3 - 1.8477590650225735) / fSlow0));
+	double  fSlow7 = (1.0 / (1 + ((fSlow3 + 1.8477590650225735) / fSlow0)));
+	double  fSlow8 = (2 * (0 - fSlow1));
 
 	float Lgain = 1.f;
 	float Rgain = 1.f;
@@ -287,26 +279,27 @@ run(LV2_Handle instance, uint32_t n_samples)
 	float tmpl, tmpr, intl, intr, tmpinl, tmpinr;
 
 	for (uint32_t i = 0; i < n_samples; ++i) {
-		tmpinl=zamexcite->delaybuf_l[delaysamples-1];
-		tmpinr=zamexcite->delaybuf_r[delaysamples-1];
+		zamexcite->delaybuf_l[delaysamples-1] = input_l[i];
+		zamexcite->delaybuf_r[delaysamples-1] = input_r[i];
+		for (int k = delaysamples-1; k >= 1 ; --k) {
+			//sanitize_denormal(zamexcite->delaybuf_l[k]);
+			//sanitize_denormal(zamexcite->delaybuf_r[k]);
+			zamexcite->delaybuf_l[k-1] = zamexcite->delaybuf_l[k];
+			zamexcite->delaybuf_r[k-1] = zamexcite->delaybuf_r[k];
+		}
+		tmpinl=zamexcite->delaybuf_l[0];
+		tmpinr=zamexcite->delaybuf_r[0];
 
 		sanitize_denormal(tmpinl);
 		sanitize_denormal(tmpinr);
 
-		sanitize_denormal(zamexcite->xfl_1);
-		sanitize_denormal(zamexcite->xfl_2);
-		sanitize_denormal(zamexcite->xfr_1);
-		sanitize_denormal(zamexcite->xfr_2);
-		sanitize_denormal(zamexcite->yfl_1);
-		sanitize_denormal(zamexcite->yfl_2);
-		sanitize_denormal(zamexcite->yfr_1);
-		sanitize_denormal(zamexcite->yfr_2);
-		
-		intl = b0/a0*tmpinl + b1/a0*zamexcite->xfl_1 + b2/a0*zamexcite->xfl_2
-			- a1/a0*zamexcite->yfl_1 - a2/a0*zamexcite->yfl_2;
+		zamexcite->fRec1l[0] = ((double)tmpinl - (fSlow7 * ((fSlow6 * zamexcite->fRec1l[2]) + (fSlow2 * zamexcite->fRec1l[1]))));
+		zamexcite->fRec0l[0] = ((fSlow7 * (((fSlow1 * zamexcite->fRec1l[0]) + (fSlow8 * zamexcite->fRec1l[1])) + (fSlow1 * zamexcite->fRec1l[2]))) - (fSlow5 * ((fSlow4 * zamexcite->fRec0l[2]) + (fSlow2 * zamexcite->fRec0l[1]))));
+		intl = (float)(fSlow5 * (((fSlow1 * zamexcite->fRec0l[0]) + (fSlow8 * zamexcite->fRec0l[1])) + (fSlow1 * zamexcite->fRec0l[2])));
 
-		intr = b0/a0*tmpinr + b1/a0*zamexcite->xfr_1 + b2/a0*zamexcite->xfr_2
-			- a1/a0*zamexcite->yfr_1 - a2/a0*zamexcite->yfr_2;
+		zamexcite->fRec1r[0] = ((double)tmpinr - (fSlow7 * ((fSlow6 * zamexcite->fRec1r[2]) + (fSlow2 * zamexcite->fRec1r[1]))));
+		zamexcite->fRec0r[0] = ((fSlow7 * (((fSlow1 * zamexcite->fRec1r[0]) + (fSlow8 * zamexcite->fRec1r[1])) + (fSlow1 * zamexcite->fRec1r[2]))) - (fSlow5 * ((fSlow4 * zamexcite->fRec0r[2]) + (fSlow2 * zamexcite->fRec0r[1]))));
+		intr = (float)(fSlow5 * (((fSlow1 * zamexcite->fRec0r[0]) + (fSlow8 * zamexcite->fRec0r[1])) + (fSlow1 * zamexcite->fRec0r[2])));
 
 		sanitize_denormal(intl);
 		sanitize_denormal(intr);
@@ -382,11 +375,11 @@ run(LV2_Handle instance, uint32_t n_samples)
 
 		sanitize_denormal(drygain);
 		
-		float outl = tmpl + (input_l[i] * drygain);
-		float outr = tmpr + (input_r[i] * drygain);
+		float outl = tmpl + (input_l[i] * drygain)*togglelisten;
+		float outr = tmpr + (input_r[i] * drygain)*togglelisten;
 		
-		output_l[i] = fabs(outl) > 1.f ? 1.f : outl;
-		output_r[i] = fabs(outr) > 1.f ? 1.f : outr;
+		output_l[i] = outl;
+		output_r[i] = outr;
 
 		//post
 		zamexcite->oldL_yl = Lyl;
@@ -394,30 +387,17 @@ run(LV2_Handle instance, uint32_t n_samples)
 		zamexcite->oldL_y1 = Ly1;
 		zamexcite->oldR_y1 = Ry1;
 		
-		zamexcite->xfl_2 = zamexcite->xfl_1;
-		zamexcite->xfl_1 = tmpinl;
 
-		zamexcite->yfl_2 = zamexcite->yfl_1;
-		zamexcite->yfl_1 = intl;
+		zamexcite->fRec0l[2] = zamexcite->fRec0l[1];
+		zamexcite->fRec0l[1] = zamexcite->fRec0l[0];
+		zamexcite->fRec1l[2] = zamexcite->fRec1l[1];
+		zamexcite->fRec1l[1] = zamexcite->fRec1l[0];
 
-		zamexcite->xfr_2 = zamexcite->xfr_1;
-		zamexcite->xfr_1 = tmpinr;
+		zamexcite->fRec0r[2] = zamexcite->fRec0r[1];
+		zamexcite->fRec0r[1] = zamexcite->fRec0r[0];
+		zamexcite->fRec1r[2] = zamexcite->fRec1r[1];
+		zamexcite->fRec1r[1] = zamexcite->fRec1r[0];
 
-		zamexcite->yfr_2 = zamexcite->yfr_1;
-		zamexcite->yfr_1 = intr;
-
-		zamexcite->delaybuf_l[0] = input_l[i];
-		zamexcite->delaybuf_r[0] = input_r[i];
-
-		sanitize_denormal(zamexcite->delaybuf_l[0]);
-		sanitize_denormal(zamexcite->delaybuf_r[0]);
-
-		for (int k = 0; k < delaysamples; ++k) {
-			sanitize_denormal(zamexcite->delaybuf_l[k]);
-			sanitize_denormal(zamexcite->delaybuf_r[k]);
-			zamexcite->delaybuf_l[k+1] = zamexcite->delaybuf_l[k];
-			zamexcite->delaybuf_r[k+1] = zamexcite->delaybuf_r[k];
-		}
 	}
 }
 
