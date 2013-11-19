@@ -163,7 +163,7 @@ lv2:port [
         lv2:symbol "finedelay";
         lv2:name "Fine Delay (μs)";
         lv2:minimum 25.0 ;
-        lv2:maximum 60000.0 ;
+        lv2:maximum 20000.0 ;
         lv2:default 1000.0 ;
 	lv2:portProperty pprops:logarithmic;
         ],
