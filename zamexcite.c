@@ -263,11 +263,9 @@ run(LV2_Handle instance, uint32_t n_samples)
 	double  fSlow1 = (1.0 / pow(fSlow0,2));
 	double  fSlow2 = (2 * (1 - fSlow1));
 	double  fSlow3 = (1.0 / fSlow0);
-	double  fSlow4 = (1 + ((fSlow3 - 0.7653668647301795) / fSlow0));
-	double  fSlow5 = (1.0 / (1 + ((0.7653668647301795 + fSlow3) / fSlow0)));
-	double  fSlow6 = (1 + ((fSlow3 - 1.8477590650225735) / fSlow0));
-	double  fSlow7 = (1.0 / (1 + ((fSlow3 + 1.8477590650225735) / fSlow0)));
-	double  fSlow8 = (2 * (0 - fSlow1));
+	double  fSlow4 = (1 + ((fSlow3 - 1.414213562373095) / fSlow0));
+	double  fSlow5 = (1.0 / (1 + ((1.414213562373095 + fSlow3) / fSlow0)));
+	double  fSlow6 = (2 * (0 - fSlow1));
 
 	float Lgain = 1.f;
 	float Rgain = 1.f;
@@ -292,14 +290,12 @@ run(LV2_Handle instance, uint32_t n_samples)
 
 		sanitize_denormal(tmpinl);
 		sanitize_denormal(tmpinr);
+		
+		zamexcite->fRec0l[0] = ((double)tmpinl - (fSlow5 * ((fSlow4 * zamexcite->fRec0l[2]) + (fSlow2 * zamexcite->fRec0l[1]))));
+		intl = (float)(fSlow5 * (((fSlow1 * zamexcite->fRec0l[0]) + (fSlow6 * zamexcite->fRec0l[1])) + (fSlow1 * zamexcite->fRec0l[2])));
 
-		zamexcite->fRec1l[0] = ((double)tmpinl - (fSlow7 * ((fSlow6 * zamexcite->fRec1l[2]) + (fSlow2 * zamexcite->fRec1l[1]))));
-		zamexcite->fRec0l[0] = ((fSlow7 * (((fSlow1 * zamexcite->fRec1l[0]) + (fSlow8 * zamexcite->fRec1l[1])) + (fSlow1 * zamexcite->fRec1l[2]))) - (fSlow5 * ((fSlow4 * zamexcite->fRec0l[2]) + (fSlow2 * zamexcite->fRec0l[1]))));
-		intl = (float)(fSlow5 * (((fSlow1 * zamexcite->fRec0l[0]) + (fSlow8 * zamexcite->fRec0l[1])) + (fSlow1 * zamexcite->fRec0l[2])));
-
-		zamexcite->fRec1r[0] = ((double)tmpinr - (fSlow7 * ((fSlow6 * zamexcite->fRec1r[2]) + (fSlow2 * zamexcite->fRec1r[1]))));
-		zamexcite->fRec0r[0] = ((fSlow7 * (((fSlow1 * zamexcite->fRec1r[0]) + (fSlow8 * zamexcite->fRec1r[1])) + (fSlow1 * zamexcite->fRec1r[2]))) - (fSlow5 * ((fSlow4 * zamexcite->fRec0r[2]) + (fSlow2 * zamexcite->fRec0r[1]))));
-		intr = (float)(fSlow5 * (((fSlow1 * zamexcite->fRec0r[0]) + (fSlow8 * zamexcite->fRec0r[1])) + (fSlow1 * zamexcite->fRec0r[2])));
+		zamexcite->fRec0r[0] = ((double)tmpinr - (fSlow5 * ((fSlow4 * zamexcite->fRec0r[2]) + (fSlow2 * zamexcite->fRec0r[1]))));
+		intr = (float)(fSlow5 * (((fSlow1 * zamexcite->fRec0r[0]) + (fSlow6 * zamexcite->fRec0r[1])) + (fSlow1 * zamexcite->fRec0r[2])));
 
 		sanitize_denormal(intl);
 		sanitize_denormal(intr);
@@ -390,13 +386,13 @@ run(LV2_Handle instance, uint32_t n_samples)
 
 		zamexcite->fRec0l[2] = zamexcite->fRec0l[1];
 		zamexcite->fRec0l[1] = zamexcite->fRec0l[0];
-		zamexcite->fRec1l[2] = zamexcite->fRec1l[1];
-		zamexcite->fRec1l[1] = zamexcite->fRec1l[0];
+		//zamexcite->fRec1l[2] = zamexcite->fRec1l[1];
+		//zamexcite->fRec1l[1] = zamexcite->fRec1l[0];
 
 		zamexcite->fRec0r[2] = zamexcite->fRec0r[1];
 		zamexcite->fRec0r[1] = zamexcite->fRec0r[0];
-		zamexcite->fRec1r[2] = zamexcite->fRec1r[1];
-		zamexcite->fRec1r[1] = zamexcite->fRec1r[0];
+		//zamexcite->fRec1r[2] = zamexcite->fRec1r[1];
+		//zamexcite->fRec1r[1] = zamexcite->fRec1r[0];
 
 	}
 }
