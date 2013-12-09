@@ -58,7 +58,7 @@ lv2:port [
 	lv2:name "Attack (ms)";
 	lv2:minimum 0.25 ;
 	lv2:maximum 500.0 ;
-	lv2:default 8.0 ;
+	lv2:default 10.0 ;
 	ue:unit ue:ms;
 	],
 
@@ -69,7 +69,7 @@ lv2:port [
 	lv2:name "Release (ms)";
 	lv2:minimum 2.0 ;
 	lv2:maximum 1000.0 ;
-	lv2:default 200.0 ;
+	lv2:default 150.0 ;
 	ue:unit ue:ms;
 	],
 
@@ -80,7 +80,7 @@ lv2:port [
 	lv2:name "Knee (dB)";
 	lv2:minimum 0.0 ;
 	lv2:maximum 30.0 ;
-	lv2:default 0.0 ;
+	lv2:default 15.0 ;
 	ue:unit ue:db;
 	],
 	
@@ -91,7 +91,7 @@ lv2:port [
 	lv2:name "Ratio (dB)";
 	lv2:minimum 2.0 ;
 	lv2:maximum 20.0 ;
-	lv2:default 5.0 ;
+	lv2:default 6.0 ;
 	ue:unit ue:db;
 	],
 	
@@ -102,7 +102,7 @@ lv2:port [
 	lv2:name "Threshold (dB)";
 	lv2:minimum -60.0 ;
 	lv2:maximum 0.0 ;
-	lv2:default -20.0 ;
+	lv2:default -12.0 ;
 	ue:unit ue:db;
 	],
 	
@@ -113,7 +113,7 @@ lv2:port [
 	lv2:name "Side Gain (dB)";
 	lv2:minimum -20.0 ;
 	lv2:maximum 20.0 ;
-	lv2:default 10.0 ;
+	lv2:default 12.0 ;
 	ue:unit ue:db;
 	],
 
@@ -163,8 +163,8 @@ lv2:port [
         lv2:symbol "finedelay";
         lv2:name "Fine Delay (μs)";
         lv2:minimum 25.0 ;
-        lv2:maximum 20000.0 ;
-        lv2:default 1000.0 ;
+        lv2:maximum 100000.0 ;
+        lv2:default 25000.0 ;
 	lv2:portProperty pprops:logarithmic;
         ],
 
@@ -173,9 +173,9 @@ lv2:port [
         lv2:index 14;
         lv2:symbol "hpfreq";
         lv2:name "HPF Freq (Hz)";
-        lv2:minimum 1000.0 ;
+        lv2:minimum 500.0 ;
         lv2:maximum 18000.0 ;
-        lv2:default 6500.0 ;
+        lv2:default 6000.0 ;
 	lv2:portProperty pprops:logarithmic;
         ],
         

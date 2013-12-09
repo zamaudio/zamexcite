@@ -26,7 +26,7 @@
 #define STEREOLINK_UNCOUPLED 0
 #define STEREOLINK_AVERAGE 1
 #define STEREOLINK_MAX 2
-#define MAXDELAYSAMPLES 3840 /* 1/50 of a second at 192k */
+#define MAXDELAYSAMPLES 19200 /* 1/10 of a second at 192k */
 
 #define min(x,y) (x < y) ? x : y
 
@@ -93,8 +93,7 @@ typedef struct {
 	float delaybuf_l[MAXDELAYSAMPLES];
 	float delaybuf_r[MAXDELAYSAMPLES];
 	
-	int delaypos;
-	int delaychanged;
+	int pos;
 	int delaysamples;
 
 } ZamEXCITE;
@@ -119,7 +118,7 @@ instantiate(const LV2_Descriptor* descriptor,
 		zamexcite->delaybuf_l[i] = 0.f;
 		zamexcite->delaybuf_r[i] = 0.f;
 	}
-	zamexcite->delaychanged = 0;
+	zamexcite->pos = 0;
 	zamexcite->delaysamples = 0;
 
 	return (LV2_Handle)zamexcite;
@@ -275,18 +274,22 @@ run(LV2_Handle instance, uint32_t n_samples)
 	float Rxl, Ryl, Ry1;
  
 	float tmpl, tmpr, intl, intr, tmpinl, tmpinr;
-
+	float *posl = &zamexcite->delaybuf_l[zamexcite->pos];
+	float *posr = &zamexcite->delaybuf_r[zamexcite->pos];
 	for (uint32_t i = 0; i < n_samples; ++i) {
-		zamexcite->delaybuf_l[delaysamples-1] = input_l[i];
-		zamexcite->delaybuf_r[delaysamples-1] = input_r[i];
-		for (int k = delaysamples-1; k >= 1 ; --k) {
-			//sanitize_denormal(zamexcite->delaybuf_l[k]);
-			//sanitize_denormal(zamexcite->delaybuf_r[k]);
-			zamexcite->delaybuf_l[k-1] = zamexcite->delaybuf_l[k];
-			zamexcite->delaybuf_r[k-1] = zamexcite->delaybuf_r[k];
+		*posl = input_l[i];
+		*posr = input_r[i];
+		posl++;
+		posr++;
+		zamexcite->pos++;
+		if (zamexcite->pos > delaysamples) {
+			zamexcite->pos = 0;
+			posl = &zamexcite->delaybuf_l[0];
+			posr = &zamexcite->delaybuf_r[0];
 		}
-		tmpinl=zamexcite->delaybuf_l[0];
-		tmpinr=zamexcite->delaybuf_r[0];
+
+		tmpinl=*posl;
+		tmpinr=*posr;
 
 		sanitize_denormal(tmpinl);
 		sanitize_denormal(tmpinr);
